@@ -1,0 +1,36 @@
+{
+  "name": "facesort-mobile",
+  "version": "1.0.0",
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "ts:check": "tsc"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.28.9",
+    "expo": "~56.0.0",
+    "expo-constants": "~17.0.0",
+    "expo-image": "~2.0.0",
+    "expo-image-picker": "~16.0.0",
+    "expo-linear-gradient": "~14.0.0",
+    "expo-linking": "~7.0.0",
+    "expo-router": "~56.2.8",
+    "expo-secure-store": "~14.0.0",
+    "expo-status-bar": "~2.0.0",
+    "react": "19.2.3",
+    "react-native": "0.85.2",
+    "react-native-reanimated": "~3.16.0",
+    "react-native-safe-area-context": "4.12.0",
+    "react-native-screens": "~4.4.0",
+    "zustand": "^4.5.2"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.20.0",
+    "@types/react": "~19.0.0",
+    "typescript": "~5.3.3"
+  },
+  "private": true
+}
