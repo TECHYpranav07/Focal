@@ -106,7 +106,7 @@ function AppContent() {
               <div style={styles.lightboxActions}>
                 <a
                   href={preview.uri}
-                  download="facesort_match.jpg"
+                  download="focal_match.jpg"
                   className="btn btn-accent"
                   style={{ padding: '8px 16px', gap: '6px' }}
                 >

@@ -45,7 +45,7 @@ export default function Register() {
         {/* Brand Logo */}
         <div style={styles.brand}>
           <span style={styles.brandIcon}>✨</span>
-          <h1 className="gradient-text" style={styles.brandName}>FaceSort</h1>
+          <h1 className="gradient-text" style={styles.brandName}>Focal</h1>
         </div>
 
         <GlassCard padding="xl" showSheen style={styles.card}>

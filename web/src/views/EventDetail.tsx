@@ -46,7 +46,7 @@ export default function EventDetail() {
   const handleShare = () => {
     if (event) {
       navigator.share?.({
-        title: `Join my FaceSort Event: ${event.name}`,
+        title: `Join my Focal Event: ${event.name}`,
         text: `Use invite code: ${event.invite_code} to join this event!`,
         url: window.location.origin,
       }).catch(console.error);

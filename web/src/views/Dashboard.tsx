@@ -168,7 +168,7 @@ export default function Dashboard() {
           <span style={styles.emptyStateIcon}>🎉</span>
           <h4 style={styles.emptyStateTitle}>Host your first event</h4>
           <p style={styles.emptyStateDesc}>
-            Create a shared event space, invite your friends with a code, and let FaceSort automatically distribute matched photos to everyone!
+            Create a shared event space, invite your friends with a code, and let Focal automatically distribute matched photos to everyone!
           </p>
           <button onClick={() => setCreateOpen(true)} className="btn btn-primary" style={{ marginTop: '16px' }}>
             <Plus size={16} /> Create Event

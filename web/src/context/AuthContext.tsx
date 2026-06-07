@@ -24,7 +24,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(localStorage.getItem('facesort_token'));
+  const [token, setToken] = useState<string | null>(localStorage.getItem('focal_token'));
   const [loading, setLoading] = useState(true);
 
   // Configure global Axios headers on mount
@@ -56,7 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await axios.post(API_ENDPOINTS.LOGIN, { email, password });
       const { access_token } = response.data;
-      localStorage.setItem('facesort_token', access_token);
+      localStorage.setItem('focal_token', access_token);
       setToken(access_token);
     } catch (error: any) {
       setLoading(false);
@@ -80,7 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         password,
       });
       const { access_token } = response.data;
-      localStorage.setItem('facesort_token', access_token);
+      localStorage.setItem('focal_token', access_token);
       setToken(access_token);
     } catch (error: any) {
       setLoading(false);
@@ -96,8 +96,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
-    localStorage.removeItem('facesort_token');
-    localStorage.removeItem('facesort_active_event');
+    localStorage.removeItem('focal_token');
+    localStorage.removeItem('focal_active_event');
     delete axios.defaults.headers.common['Authorization'];
     setToken(null);
     setUser(null);

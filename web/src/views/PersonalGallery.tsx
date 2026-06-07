@@ -100,7 +100,7 @@ export default function PersonalGallery() {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `facesort_gallery_${selectedEventId}.zip`;
+      link.download = `focal_gallery_${selectedEventId}.zip`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -385,7 +385,7 @@ export default function PersonalGallery() {
                 <div style={styles.lightboxActionsRow}>
                   <a
                     href={selectedPhoto.uri}
-                    download={`facesort_match.jpg`}
+                    download={`focal_match.jpg`}
                     className="btn btn-accent"
                     style={{ flex: 1, gap: '8px', justifyContent: 'center', display: 'flex', alignItems: 'center', textDecoration: 'none' }}
                   >

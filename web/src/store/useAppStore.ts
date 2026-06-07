@@ -22,12 +22,12 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set) => ({
-  activeEventId: localStorage.getItem('facesort_active_event'),
+  activeEventId: localStorage.getItem('focal_active_event'),
   setActiveEventId: (id) => {
     if (id) {
-      localStorage.setItem('facesort_active_event', id);
+      localStorage.setItem('focal_active_event', id);
     } else {
-      localStorage.removeItem('facesort_active_event');
+      localStorage.removeItem('focal_active_event');
     }
     set({ activeEventId: id });
   },
