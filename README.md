@@ -1,6 +1,6 @@
-# FaceSort — AI-Powered Photo Distribution App
+# Focal — AI-Powered Photo Distribution App
 
-**FaceSort** is an AI-powered photo distribution application that automatically matches and distributes group event photos to the correct people using face recognition. After a group event (trip, wedding, college fest, hackathon), all photos end up on one device. FaceSort solves the manual sorting process automatically using face embeddings (ArcFace) and face detection (RetinaFace).
+**Focal** is an AI-powered photo distribution application that automatically matches and distributes group event photos to the correct people using face recognition. After a group event (trip, wedding, college fest, hackathon), all photos end up on one device. Focal solves the manual sorting process automatically using face embeddings (ArcFace) and face detection (RetinaFace).
 
 ---
 
@@ -53,7 +53,7 @@ This project contains three components:
    ```bash
    npm run dev
    ```
-   Open **`http://localhost:5173`** in your browser to explore the FaceSort app!
+   Open **`http://localhost:5173`** in your browser to explore the Focal app!
 
 ---
 
