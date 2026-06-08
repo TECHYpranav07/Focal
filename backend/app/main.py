@@ -70,6 +70,7 @@ app.add_middleware(
 )
 
 # ── Static files (serve uploaded photos / selfies) ───────────────────────────
+Path(settings.UPLOAD_DIR).mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 
 # ── API Routes ───────────────────────────────────────────────────────────────
