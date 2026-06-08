@@ -85,58 +85,117 @@ export function useGallery(eventId: string) {
 
 // Helper function to compress images using HTML5 Canvas
 async function compressImage(file: File, maxWidth = 1600, maxHeight = 1600): Promise<File> {
-  if (!file.type.startsWith('image/')) return file;
+  const isHeic =
+    file.type === 'image/heic' ||
+    file.type === 'image/heif' ||
+    file.name.toLowerCase().endsWith('.heic') ||
+    file.name.toLowerCase().endsWith('.heif');
+
+  let imageFile: File | Blob = file;
+
+  if (isHeic) {
+    try {
+      // Dynamically import heic2any to keep bundle size small and load only when needed
+      const heic2anyModule = await import('heic2any');
+      const heic2any = (heic2anyModule as any).default || heic2anyModule;
+      
+      const converted = await heic2any({
+        blob: file,
+        toType: 'image/jpeg',
+        quality: 0.9,
+      });
+      
+      const blob = Array.isArray(converted) ? converted[0] : converted;
+      const newName = file.name.replace(/\.(heic|heif)$/i, '.jpg');
+      
+      imageFile = new File([blob], newName, {
+        type: 'image/jpeg',
+        lastModified: Date.now(),
+      });
+    } catch (err) {
+      console.error('HEIC conversion failed, falling back to original file:', err);
+      imageFile = file;
+    }
+  }
+
+  // If it's not a compatible image type, return the file as-is
+  if (!imageFile.type.startsWith('image/')) {
+    return imageFile as File;
+  }
 
   return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        let width = img.width;
-        let height = img.height;
+    try {
+      const reader = new FileReader();
+      
+      reader.onload = (event) => {
+        const img = new Image();
+        
+        img.onload = () => {
+          try {
+            let width = img.width;
+            let height = img.height;
 
-        // Calculate aspect-ratio scale dimensions
-        if (width > height) {
-          if (width > maxWidth) {
-            height = Math.round((height * maxWidth) / width);
-            width = maxWidth;
-          }
-        } else {
-          if (height > maxHeight) {
-            width = Math.round((width * maxHeight) / height);
-            height = maxHeight;
-          }
-        }
-
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, width, height);
-        }
-
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              const compressedFile = new File([blob], file.name, {
-                type: 'image/jpeg',
-                lastModified: Date.now(),
-              });
-              resolve(compressedFile);
+            // Calculate aspect-ratio scale dimensions
+            if (width > height) {
+              if (width > maxWidth) {
+                height = Math.round((height * maxWidth) / width);
+                width = maxWidth;
+              }
             } else {
-              resolve(file);
+              if (height > maxHeight) {
+                width = Math.round((width * maxHeight) / height);
+                height = maxHeight;
+              }
             }
-          },
-          'image/jpeg',
-          0.85 // compress to 85% JPEG quality
-        );
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, width, height);
+            }
+
+            canvas.toBlob(
+              (blob) => {
+                if (blob) {
+                  const compressedFile = new File([blob], (imageFile as File).name, {
+                    type: 'image/jpeg',
+                    lastModified: Date.now(),
+                  });
+                  resolve(compressedFile);
+                } else {
+                  resolve(imageFile as File);
+                }
+              },
+              'image/jpeg',
+              0.85 // compress to 85% JPEG quality
+            );
+          } catch (canvasErr) {
+            console.error('Canvas processing failed, resolving with uncompressed file:', canvasErr);
+            resolve(imageFile as File);
+          }
+        };
+
+        img.onerror = (err) => {
+          console.error('Failed to load image in browser, resolving with original file:', err);
+          resolve(imageFile as File);
+        };
+
+        img.src = event.target?.result as string;
       };
-      img.src = event.target?.result as string;
-    };
-    reader.onerror = () => resolve(file);
-    reader.readAsDataURL(file);
+
+      reader.onerror = (err) => {
+        console.error('FileReader error, resolving with original file:', err);
+        resolve(imageFile as File);
+      };
+
+      reader.readAsDataURL(imageFile);
+    } catch (err) {
+      console.error('Compression setup error, resolving with original file:', err);
+      resolve(imageFile as File);
+    }
   });
 }
 
