@@ -83,6 +83,63 @@ export function useGallery(eventId: string) {
   });
 }
 
+// Helper function to compress images using HTML5 Canvas
+async function compressImage(file: File, maxWidth = 1600, maxHeight = 1600): Promise<File> {
+  if (!file.type.startsWith('image/')) return file;
+
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        // Calculate aspect-ratio scale dimensions
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+        }
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const compressedFile = new File([blob], file.name, {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+              });
+              resolve(compressedFile);
+            } else {
+              resolve(file);
+            }
+          },
+          'image/jpeg',
+          0.85 // compress to 85% JPEG quality
+        );
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.onerror = () => resolve(file);
+    reader.readAsDataURL(file);
+  });
+}
+
 // Upload photos / selfies with Axios upload progress tracking
 export function useUploadPhotos(eventId: string) {
   const queryClient = useQueryClient();
@@ -98,7 +155,13 @@ export function useUploadPhotos(eventId: string) {
       onProgress?: (progress: number) => void;
     }) => {
       const formData = new FormData();
-      files.forEach((file) => {
+      
+      // Compress all image files in parallel in the browser before sending
+      const processedFiles = await Promise.all(
+        files.map((file) => compressImage(file))
+      );
+
+      processedFiles.forEach((file) => {
         formData.append('files', file);
       });
 
