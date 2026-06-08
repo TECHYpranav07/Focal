@@ -7,6 +7,7 @@ passlib[bcrypt]==1.7.4
 python-multipart==0.0.12
 pydantic-settings==2.5.2
 deepface==0.0.93
+opencv-python-headless==4.9.0.80
 tf-keras>=2.16.0
 numpy==1.26.4
 Pillow==10.4.0
