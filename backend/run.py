@@ -10,4 +10,7 @@ import uvicorn
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
-    uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=True)
+    # Enable reload only in local development (when not on Railway)
+    is_production = os.getenv("RAILWAY_ENVIRONMENT") is not None or os.getenv("ENVIRONMENT") == "production"
+    reload = not is_production
+    uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=reload)

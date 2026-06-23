@@ -38,7 +38,7 @@ def extract_embeddings_from_image(image_path: str) -> list[dict]:
         results = DeepFace.represent(
             img_path=image_path,
             model_name="ArcFace",
-            detector_backend="retinaface",
+            detector_backend=settings.DETECTOR_BACKEND,
             enforce_detection=False,
         )
     except Exception as exc:
@@ -198,6 +198,14 @@ async def match_faces_for_event(event_id: int, db: AsyncSession) -> dict:
         except Exception as exc:
             logger.error("Failed to process photo %s: %s", photo.id, exc)
             photo.processing_status = "failed"
+        finally:
+            import gc
+            import tensorflow.keras.backend as K
+            try:
+                K.clear_session()
+            except Exception:
+                pass
+            gc.collect()
         await db.flush()
 
     # ── Step 3: Compute member centroids ─────────────────────────────────
