@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     # Face matching
     SIMILARITY_THRESHOLD: float = 0.60
     FALLBACK_THRESHOLD: float = 0.35
-    DETECTOR_BACKEND: str = "yunet"
+    DETECTOR_BACKEND: str = "retinaface"
 
     @property
     def photos_dir(self) -> Path:
