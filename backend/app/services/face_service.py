@@ -322,7 +322,7 @@ async def match_faces_for_event(event_id: int, db: AsyncSession) -> dict:
         
         # Distribution Insurance: If photo has faces, but no matches in database and none created this run
         if len(db_matches) == 0 and photo_matches_created == 0:
-            if photo_best_user_id is not None and photo_best_sim >= insurance_threshold:
+            if photo_best_user_id is not None:
                 match = Match(
                     event_id=event_id,
                     photo_id=photo.id,
