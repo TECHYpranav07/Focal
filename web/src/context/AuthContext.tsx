@@ -14,7 +14,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (usernameOrEmail: string, password: string) => Promise<void>;
   register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
@@ -51,10 +51,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async (usernameOrEmail: string, password: string) => {
     setLoading(true);
     try {
-      const response = await axios.post(API_ENDPOINTS.LOGIN, { email, password });
+      const response = await axios.post(API_ENDPOINTS.LOGIN, {
+        username_or_email: usernameOrEmail,
+        password,
+      });
       const { access_token } = response.data;
       localStorage.setItem('focal_token', access_token);
       setToken(access_token);

@@ -5,7 +5,7 @@ import { useAuthContext } from '../context/AuthContext';
 import GlassCard from '../components/GlassCard';
 
 export default function Login() {
-  const [email, setEmail] = useState('');
+  const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -15,7 +15,7 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
+    if (!usernameOrEmail || !password) {
       setError('Please fill in all fields');
       return;
     }
@@ -23,7 +23,7 @@ export default function Login() {
     setLoading(true);
 
     try {
-      await login(email, password);
+      await login(usernameOrEmail, password);
       navigate('/');
     } catch (err: any) {
       setError(err.message || 'Incorrect credentials');
@@ -50,17 +50,17 @@ export default function Login() {
 
           <div style={styles.fields}>
             <div className="input-container">
-              <label className="input-label">EMAIL ADDRESS</label>
+              <label className="input-label">EMAIL ADDRESS OR USERNAME</label>
               <div style={styles.inputWrapper}>
                 <Mail size={16} style={styles.fieldIcon} />
                 <input
-                  type="email"
-                  placeholder="name@example.com"
+                  type="text"
+                  placeholder="Enter your email or username"
                   className="form-input"
                   style={{ paddingLeft: '44px' }}
-                  value={email}
+                  value={usernameOrEmail}
                   onChange={(e) => {
-                    setEmail(e.target.value);
+                    setUsernameOrEmail(e.target.value);
                     if (error) setError(null);
                   }}
                   required

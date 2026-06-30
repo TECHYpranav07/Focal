@@ -10,7 +10,7 @@ class UserRegister(BaseModel):
 
 
 class UserLogin(BaseModel):
-    email: EmailStr
+    username_or_email: str
     password: str
 
 
