@@ -359,6 +359,10 @@ async def match_faces_for_event(event_id: int, db: AsyncSession) -> dict:
 
             for user_id, centroid in centroids.items():
                 sim = cosine_similarity(face_vec, centroid)
+                logger.info(
+                    "Compare face %s to user %s: raw_sim = %s",
+                    face_emb.id, user_id, round(sim, 4)
+                )
                 
                 # Apply clothing boost if signature is available for this user
                 if face_hist is not None and user_id in user_clothing_signatures:
