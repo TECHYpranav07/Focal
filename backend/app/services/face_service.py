@@ -26,6 +26,67 @@ from app.utils.similarity import (
 logger = logging.getLogger(__name__)
 
 
+# ── Clothing Histogram Extraction ─────────────────────────────────────────────
+
+def extract_clothing_histogram(image_path: str, bbox: dict) -> np.ndarray | None:
+    """Extract a 2D Hue-Saturation color histogram of the clothing area below the face."""
+    import cv2
+    try:
+        img = cv2.imread(image_path)
+        if img is None:
+            return None
+        h_img, w_img, _ = img.shape
+        
+        # Bounding box of face: x, y, w, h
+        x = int(bbox.get("x", 0))
+        y = int(bbox.get("y", 0))
+        w = int(bbox.get("w", 0))
+        h = int(bbox.get("h", 0))
+        
+        # Torso area is roughly below the face
+        cx = max(0, x - w // 2)
+        cy = min(h_img - 1, y + h)
+        cw = w * 2
+        ch = h * 3
+        
+        x1 = cx
+        y1 = cy
+        x2 = min(w_img, cx + cw)
+        y2 = min(h_img, cy + ch)
+        
+        if x2 <= x1 or y2 <= y1:
+            return None
+            
+        crop = img[y1:y2, x1:x2]
+        if crop.size == 0:
+            return None
+            
+        # Convert to HSV color space
+        hsv = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
+        
+        # Calculate 2D H-S histogram (8 bins for Hue, 8 bins for Saturation)
+        hist = cv2.calcHist([hsv], [0, 1], None, [8, 8], [0, 180, 0, 256])
+        
+        # Normalize histogram to sum to 1
+        norm = np.sum(hist)
+        if norm > 0:
+            hist = hist / norm
+        return hist.flatten()
+    except Exception as exc:
+        logger.error("Failed to extract clothing histogram for %s: %s", image_path, exc)
+        return None
+
+
+def compare_clothing_histograms(hist1: np.ndarray, hist2: np.ndarray) -> float:
+    """Compare two 2D H-S histograms using correlation. Returns value between -1.0 and 1.0."""
+    import cv2
+    try:
+        return float(cv2.compareHist(hist1.astype(np.float32), hist2.astype(np.float32), cv2.HISTCMP_CORREL))
+    except Exception as exc:
+        logger.error("Failed to compare clothing histograms: %s", exc)
+        return -1.0
+
+
 # ── Embedding Extraction ─────────────────────────────────────────────────────
 
 def extract_embeddings_from_image(image_path: str) -> list[dict]:
@@ -74,6 +135,15 @@ async def process_photo_embeddings(photo: Photo, db: AsyncSession) -> int:
         emb_bytes = embedding_to_bytes(face_data["embedding"])
         area = face_data["facial_area"]
 
+        # Extract clothing histogram
+        clothing_hist_bytes = None
+        try:
+            hist = extract_clothing_histogram(photo.file_path, area)
+            if hist is not None:
+                clothing_hist_bytes = hist.tobytes()
+        except Exception as e:
+            logger.error("Failed to extract clothing histogram: %s", e)
+
         face_emb = FaceEmbedding(
             photo_id=photo.id,
             embedding=emb_bytes,
@@ -82,6 +152,7 @@ async def process_photo_embeddings(photo: Photo, db: AsyncSession) -> int:
             bbox_w=int(area.get("w", 0)),
             bbox_h=int(area.get("h", 0)),
             detection_confidence=float(face_data["face_confidence"]),
+            clothing_hist=clothing_hist_bytes,
         )
         db.add(face_emb)
         face_count += 1
@@ -230,6 +301,33 @@ async def match_faces_for_event(event_id: int, db: AsyncSession) -> dict:
     )
     all_completed_photos = all_photos_result.scalars().all()
 
+    # ── Step 4.0: Build clothing signatures for event members (First Pass) ────
+    user_clothing_samples = defaultdict(list)
+    for photo in all_completed_photos:
+        face_embs_result = await db.execute(
+            select(FaceEmbedding).where(FaceEmbedding.photo_id == photo.id)
+        )
+        face_embs = face_embs_result.scalars().all()
+        for face_emb in face_embs:
+            if face_emb.clothing_hist is None:
+                continue
+            face_vec = bytes_to_embedding(face_emb.embedding)
+            for user_id, centroid in centroids.items():
+                sim = cosine_similarity(face_vec, centroid)
+                if sim >= threshold:  # Strict high-confidence face match
+                    hist = np.frombuffer(face_emb.clothing_hist, dtype=np.float32)
+                    user_clothing_samples[user_id].append(hist)
+
+    # Compute the average normalized clothing signature for each user
+    user_clothing_signatures = {}
+    for user_id, samples in user_clothing_samples.items():
+        avg_hist = np.mean(samples, axis=0)
+        norm = np.sum(avg_hist)
+        if norm > 0:
+            avg_hist = avg_hist / norm
+        user_clothing_signatures[user_id] = avg_hist
+        logger.info("Built clothing signature for user %s with %s samples", user_id, len(samples))
+
     matches_created = 0
     fallback_threshold = settings.FALLBACK_THRESHOLD
     insurance_threshold = settings.INSURANCE_THRESHOLD
@@ -254,8 +352,30 @@ async def match_faces_for_event(event_id: int, db: AsyncSession) -> dict:
             face_best_sim = -1.0
             strict_matches = []
 
+            # Retrieve face's clothing histogram if available
+            face_hist = None
+            if face_emb.clothing_hist is not None:
+                face_hist = np.frombuffer(face_emb.clothing_hist, dtype=np.float32)
+
             for user_id, centroid in centroids.items():
                 sim = cosine_similarity(face_vec, centroid)
+                
+                # Apply clothing boost if signature is available for this user
+                if face_hist is not None and user_id in user_clothing_signatures:
+                    user_sig = user_clothing_signatures[user_id]
+                    try:
+                        corr = compare_clothing_histograms(face_hist, user_sig)
+                        # If clothing matches strongly (corr >= 0.70), apply a boost
+                        if corr >= 0.70:
+                            boost = max(0.0, (corr - 0.70) * 0.5)
+                            sim = min(1.0, sim + boost)
+                            logger.info(
+                                "User %s clothing match corr %s, boosted face sim to %s",
+                                user_id, round(corr, 3), round(sim, 3)
+                            )
+                    except Exception as e:
+                        logger.error("Failed to compare clothing: %s", e)
+
                 if sim > face_best_sim:
                     face_best_sim = sim
                     face_best_user_id = user_id

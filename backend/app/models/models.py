@@ -168,6 +168,7 @@ class FaceEmbedding(Base):
     bbox_w = Column(Integer, default=0)
     bbox_h = Column(Integer, default=0)
     detection_confidence = Column(Float, default=0.0)
+    clothing_hist = Column(LargeBinary, nullable=True)
     created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
 
     # Relationships
