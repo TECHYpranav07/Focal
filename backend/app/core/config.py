@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     SIMILARITY_THRESHOLD: float = 0.60
     FALLBACK_THRESHOLD: float = 0.35
     DETECTOR_BACKEND: str = "ssd"
+    INSURANCE_THRESHOLD: float = 0.30
 
     @property
     def photos_dir(self) -> Path:

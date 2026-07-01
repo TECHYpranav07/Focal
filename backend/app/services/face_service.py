@@ -232,7 +232,7 @@ async def match_faces_for_event(event_id: int, db: AsyncSession) -> dict:
 
     matches_created = 0
     fallback_threshold = settings.FALLBACK_THRESHOLD
-    insurance_threshold = 0.25
+    insurance_threshold = settings.INSURANCE_THRESHOLD
 
     for photo in all_completed_photos:
         face_embs_result = await db.execute(
@@ -322,7 +322,7 @@ async def match_faces_for_event(event_id: int, db: AsyncSession) -> dict:
         
         # Distribution Insurance: If photo has faces, but no matches in database and none created this run
         if len(db_matches) == 0 and photo_matches_created == 0:
-            if photo_best_user_id is not None:
+            if photo_best_user_id is not None and photo_best_sim >= insurance_threshold:
                 match = Match(
                     event_id=event_id,
                     photo_id=photo.id,
