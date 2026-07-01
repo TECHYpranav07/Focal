@@ -37,7 +37,7 @@ def extract_embeddings_from_image(image_path: str) -> list[dict]:
     try:
         results = DeepFace.represent(
             img_path=image_path,
-            model_name="ArcFace",
+            model_name=settings.RECOGNITION_MODEL,
             detector_backend=settings.DETECTOR_BACKEND,
             enforce_detection=False,
         )

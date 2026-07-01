@@ -38,6 +38,32 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
+    # Reset face matching state if the recognition model has changed
+    version_file = Path(settings.UPLOAD_DIR) / "model_version.txt"
+    old_model = ""
+    if version_file.exists():
+        try:
+            old_model = version_file.read_text(encoding="utf-8").strip()
+        except Exception:
+            pass
+
+    if old_model != settings.RECOGNITION_MODEL:
+        logger.info(
+            "Face recognition model changed from '%s' to '%s'. Resetting face matching database entries to re-process...",
+            old_model,
+            settings.RECOGNITION_MODEL,
+        )
+        from sqlalchemy import text
+        async with engine.begin() as conn:
+            await conn.execute(text("DELETE FROM matches"))
+            await conn.execute(text("DELETE FROM face_embeddings"))
+            await conn.execute(text("UPDATE selfies SET embedding = NULL"))
+            await conn.execute(text("UPDATE photos SET processing_status = 'pending', face_count = 0"))
+        try:
+            version_file.write_text(settings.RECOGNITION_MODEL, encoding="utf-8")
+        except Exception as exc:
+            logger.error("Failed to write model version file: %s", exc)
+
     logger.info("Focal backend is ready!")
     yield
 
