@@ -25,7 +25,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Pre-download DeepFace model weights during build to prevent runtime download overhead and OOM crashes
 RUN apt-get update && apt-get install -y --no-install-recommends wget ca-certificates && \
     mkdir -p /root/.deepface/weights && \
-    wget -q https://github.com/serengil/deepface_models/releases/download/v1.0/facenet512_weights.h5 -O /root/.deepface/weights/facenet512_weights.h5 && \
+    wget -q https://github.com/serengil/deepface_models/releases/download/v1.0/arcface_weights.h5 -O /root/.deepface/weights/arcface_weights.h5 && \
     wget -q https://github.com/serengil/deepface_models/releases/download/v1.0/retinaface.h5 -O /root/.deepface/weights/retinaface.h5 && \
     wget -q https://github.com/opencv/opencv_3rdparty/raw/dnn_samples_face_detector_20170830/res10_300x300_ssd_iter_140000.caffemodel -O /root/.deepface/weights/res10_300x300_ssd_iter_140000.caffemodel && \
     wget -q https://github.com/opencv/opencv/raw/3.4.0/samples/dnn/face_detector/deploy.prototxt -O /root/.deepface/weights/deploy.prototxt && \

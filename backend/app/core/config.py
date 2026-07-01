@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "uploads"
 
     # Face matching
-    RECOGNITION_MODEL: str = "Facenet512"
+    RECOGNITION_MODEL: str = "ArcFace"
     SIMILARITY_THRESHOLD: float = 0.60
     FALLBACK_THRESHOLD: float = 0.35
     DETECTOR_BACKEND: str = "ssd"
