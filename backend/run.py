@@ -9,7 +9,7 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import uvicorn
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 8000))
+    port = int(os.getenv("PORT", 7860))
     # Enable reload only in local development (when not on Railway)
     is_production = os.getenv("RAILWAY_ENVIRONMENT") is not None or os.getenv("ENVIRONMENT") == "production"
     reload = not is_production
