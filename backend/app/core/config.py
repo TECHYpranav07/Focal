@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     RECOGNITION_MODEL: str = "ArcFace"
     SIMILARITY_THRESHOLD: float = 0.38
     FALLBACK_THRESHOLD: float = 0.32
-    DETECTOR_BACKEND: str = "ssd"
+    DETECTOR_BACKEND: str = "retinaface"
     INSURANCE_THRESHOLD: float = 0.28
 
     @property
