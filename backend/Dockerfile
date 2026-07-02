@@ -36,7 +36,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends wget ca-certifi
 COPY . /app/
 
 # Expose backend API port
-EXPOSE 8000
+EXPOSE 7860
 
 # Run FastAPI backend app via run.py
 CMD ["python", "run.py"]

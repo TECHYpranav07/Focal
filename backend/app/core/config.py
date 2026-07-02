@@ -26,10 +26,10 @@ class Settings(BaseSettings):
 
     # Face matching
     RECOGNITION_MODEL: str = "ArcFace"
-    SIMILARITY_THRESHOLD: float = 0.60
-    FALLBACK_THRESHOLD: float = 0.35
+    SIMILARITY_THRESHOLD: float = 0.38
+    FALLBACK_THRESHOLD: float = 0.32
     DETECTOR_BACKEND: str = "ssd"
-    INSURANCE_THRESHOLD: float = 0.30
+    INSURANCE_THRESHOLD: float = 0.28
 
     @property
     def photos_dir(self) -> Path:
