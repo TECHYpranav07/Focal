@@ -97,7 +97,7 @@ async def save_selfies(
         file_path.write_bytes(content)
 
         # Validate that exactly one face is present in the selfie
-        faces = extract_embeddings_from_image(str(file_path))
+        faces = await extract_embeddings_from_image(str(file_path))
         if len(faces) == 0:
             file_path.unlink(missing_ok=True)
             raise HTTPException(

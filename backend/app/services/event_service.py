@@ -44,33 +44,37 @@ async def create_event(data: EventCreate, host_id: int, db: AsyncSession) -> Eve
 
 async def get_user_events(user_id: int, db: AsyncSession) -> list[dict]:
     """Return all events the user is a member of, with counts."""
+    # Get all events where the user is a member
     result = await db.execute(
-        select(EventMember.event_id).where(EventMember.user_id == user_id)
+        select(Event)
+        .join(EventMember, Event.id == EventMember.event_id)
+        .where(EventMember.user_id == user_id)
+        .order_by(Event.created_at.desc())
     )
-    event_ids = [row[0] for row in result.all()]
-
-    if not event_ids:
+    events = result.scalars().all()
+    if not events:
         return []
 
+    event_ids = [e.id for e in events]
+
+    # Count members for all events in one query
+    member_count_result = await db.execute(
+        select(EventMember.event_id, func.count(EventMember.id))
+        .where(EventMember.event_id.in_(event_ids))
+        .group_by(EventMember.event_id)
+    )
+    member_counts = {row[0]: row[1] for row in member_count_result.all()}
+
+    # Count photos for all events in one query
+    photo_count_result = await db.execute(
+        select(Photo.event_id, func.count(Photo.id))
+        .where(Photo.event_id.in_(event_ids))
+        .group_by(Photo.event_id)
+    )
+    photo_counts = {row[0]: row[1] for row in photo_count_result.all()}
+
     events_out = []
-    for event_id in event_ids:
-        result = await db.execute(select(Event).where(Event.id == event_id))
-        event = result.scalar_one_or_none()
-        if event is None:
-            continue
-
-        # Count members
-        member_count_result = await db.execute(
-            select(func.count(EventMember.id)).where(EventMember.event_id == event_id)
-        )
-        member_count = member_count_result.scalar() or 0
-
-        # Count photos
-        photo_count_result = await db.execute(
-            select(func.count(Photo.id)).where(Photo.event_id == event_id)
-        )
-        photo_count = photo_count_result.scalar() or 0
-
+    for event in events:
         events_out.append({
             "id": event.id,
             "name": event.name,
@@ -79,8 +83,8 @@ async def get_user_events(user_id: int, db: AsyncSession) -> list[dict]:
             "host_id": event.host_id,
             "status": event.status,
             "created_at": event.created_at,
-            "member_count": member_count,
-            "photo_count": photo_count,
+            "member_count": member_counts.get(event.id, 0),
+            "photo_count": photo_counts.get(event.id, 0),
         })
 
     return events_out

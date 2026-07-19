@@ -42,22 +42,26 @@ async def get_gallery(
 
     # Build gallery items
     gallery_photos: list[GalleryPhotoResponse] = []
-    for photo_id, best_match in best_by_photo.items():
-        photo_result = await db.execute(select(Photo).where(Photo.id == photo_id))
-        photo = photo_result.scalar_one_or_none()
-        if photo is None:
-            continue
-        gallery_photos.append(
-            GalleryPhotoResponse(
-                photo_id=photo.id,
-                filename=photo.filename,
-                file_path=photo.file_path,
-                event_id=photo.event_id,
-                best_similarity_score=best_match.similarity_score,
-                matched_at=best_match.created_at,
-                faces=photo.faces,
+    photo_ids = list(best_by_photo.keys())
+    if photo_ids:
+        photos_result = await db.execute(select(Photo).where(Photo.id.in_(photo_ids)))
+        photos_by_id = {p.id: p for p in photos_result.scalars().all()}
+        
+        for photo_id, best_match in best_by_photo.items():
+            photo = photos_by_id.get(photo_id)
+            if photo is None:
+                continue
+            gallery_photos.append(
+                GalleryPhotoResponse(
+                    photo_id=photo.id,
+                    filename=photo.filename,
+                    file_path=photo.file_path,
+                    event_id=photo.event_id,
+                    best_similarity_score=best_match.similarity_score,
+                    matched_at=best_match.created_at,
+                    faces=photo.faces,
+                )
             )
-        )
 
     # Sort by similarity score descending
     gallery_photos.sort(key=lambda p: p.best_similarity_score, reverse=True)

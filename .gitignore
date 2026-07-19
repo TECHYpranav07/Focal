@@ -37,4 +37,3 @@ web/.env
 Thumbs.db
 
 .vercel
-.env*

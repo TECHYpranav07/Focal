@@ -12,7 +12,6 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
 from app.api.v1.router import api_router
 from app.core.config import settings
@@ -68,18 +67,33 @@ async def lifespan(app: FastAPI):
                 pass
 
     if should_reset:
-        logger.info(
-            "Resetting face matching database entries to re-process with new configurations...",
-        )
-        async with engine.begin() as conn:
-            await conn.execute(text("DELETE FROM matches"))
-            await conn.execute(text("DELETE FROM face_embeddings"))
-            await conn.execute(text("UPDATE selfies SET embedding = NULL"))
-            await conn.execute(text("UPDATE photos SET processing_status = 'pending', face_count = 0"))
-        try:
-            version_file.write_text(settings.RECOGNITION_MODEL, encoding="utf-8")
-        except Exception as exc:
-            logger.error("Failed to write model version file: %s", exc)
+        if settings.ALLOW_DESTRUCTIVE_MIGRATION:
+            logger.info(
+                "Resetting face matching database entries to re-process with new configurations...",
+            )
+            async with engine.begin() as conn:
+                await conn.execute(text("DELETE FROM matches"))
+                await conn.execute(text("DELETE FROM face_embeddings"))
+                await conn.execute(text("UPDATE selfies SET embedding = NULL"))
+                await conn.execute(text("UPDATE photos SET processing_status = 'pending', face_count = 0"))
+            try:
+                version_file.write_text(settings.RECOGNITION_MODEL, encoding="utf-8")
+            except Exception as exc:
+                logger.error("Failed to write model version file: %s", exc)
+        else:
+            logger.error(
+                "\n"
+                "⚠️⚠️⚠️ WARNING / DATABASE RESET REQUIRED ⚠️⚠️⚠️\n"
+                f"   Model changed from '{old_model}' to '{settings.RECOGNITION_MODEL}' or\n"
+                "   existing face embeddings lack clothing histograms.\n"
+                "   This requires resetting matches and face embeddings, but\n"
+                "   ALLOW_DESTRUCTIVE_MIGRATION is set to False (default).\n"
+                "   \n"
+                "   To execute this migration automatically at startup, set:\n"
+                "   ALLOW_DESTRUCTIVE_MIGRATION=true\n"
+                "   in your environment variables or .env file.\n"
+                "   Skipping database reset for now."
+            )
 
     logger.info("Focal backend is ready!")
     yield
@@ -120,9 +134,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Static files (serve uploaded photos / selfies) ───────────────────────────
-Path(settings.UPLOAD_DIR).mkdir(parents=True, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
+# ── Auth-gated Media routes (serve uploaded photos / selfies securely) ───────
+from app.api.v1.endpoints import media
+app.include_router(media.router)
 
 # ── API Routes ───────────────────────────────────────────────────────────────
 app.include_router(api_router)

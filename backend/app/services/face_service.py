@@ -2,6 +2,8 @@
 
 import logging
 from collections import defaultdict
+import asyncio
+import cv2
 
 import numpy as np
 from deepface import DeepFace
@@ -28,58 +30,60 @@ logger = logging.getLogger(__name__)
 
 # ── Clothing Histogram Extraction ─────────────────────────────────────────────
 
-def extract_clothing_histogram(image_path: str, bbox: dict) -> np.ndarray | None:
+async def extract_clothing_histogram(image_path: str, bbox: dict) -> np.ndarray | None:
     """Extract a 2D Hue-Saturation color histogram of the clothing area below the face."""
-    import cv2
-    try:
-        img = cv2.imread(image_path)
-        if img is None:
-            return None
-        h_img, w_img, _ = img.shape
-        
-        # Bounding box of face: x, y, w, h
-        x = int(bbox.get("x", 0))
-        y = int(bbox.get("y", 0))
-        w = int(bbox.get("w", 0))
-        h = int(bbox.get("h", 0))
-        
-        # Torso area is roughly below the face
-        cx = max(0, x - w // 2)
-        cy = min(h_img - 1, y + h)
-        cw = w * 2
-        ch = h * 3
-        
-        x1 = cx
-        y1 = cy
-        x2 = min(w_img, cx + cw)
-        y2 = min(h_img, cy + ch)
-        
-        if x2 <= x1 or y2 <= y1:
-            return None
+    def _extract():
+        try:
+            img = cv2.imread(image_path)
+            if img is None:
+                return None
+            h_img, w_img, _ = img.shape
             
-        crop = img[y1:y2, x1:x2]
-        if crop.size == 0:
-            return None
+            # Bounding box of face: x, y, w, h
+            x = int(bbox.get("x", 0))
+            y = int(bbox.get("y", 0))
+            w = int(bbox.get("w", 0))
+            h = int(bbox.get("h", 0))
             
-        # Convert to HSV color space
-        hsv = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
-        
-        # Calculate 2D H-S histogram (8 bins for Hue, 8 bins for Saturation)
-        hist = cv2.calcHist([hsv], [0, 1], None, [8, 8], [0, 180, 0, 256])
-        
-        # Normalize histogram to sum to 1
-        norm = np.sum(hist)
-        if norm > 0:
-            hist = hist / norm
-        return hist.flatten()
-    except Exception as exc:
-        logger.error("Failed to extract clothing histogram for %s: %s", image_path, exc)
-        return None
+            # Torso area is roughly below the face
+            cx = max(0, x - w // 2)
+            cy = min(h_img - 1, y + h)
+            cw = w * 2
+            ch = h * 3
+            
+            x1 = cx
+            y1 = cy
+            x2 = min(w_img, cx + cw)
+            y2 = min(h_img, cy + ch)
+            
+            if x2 <= x1 or y2 <= y1:
+                return None
+                
+            crop = img[y1:y2, x1:x2]
+            if crop.size == 0:
+                return None
+                
+            # Convert to HSV color space
+            hsv = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
+            
+            # Calculate 2D H-S histogram (8 bins for Hue, 8 bins for Saturation)
+            hist = cv2.calcHist([hsv], [0, 1], None, [8, 8], [0, 180, 0, 256])
+            
+            # Normalize histogram to sum to 1
+            norm = np.sum(hist)
+            if norm > 0:
+                hist = hist / norm
+            return hist.flatten()
+        except Exception as exc:
+            logger.error("Failed to extract clothing histogram for %s: %s", image_path, exc)
+            return None
+
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _extract)
 
 
 def compare_clothing_histograms(hist1: np.ndarray, hist2: np.ndarray) -> float:
     """Compare two 2D H-S histograms using correlation. Returns value between -1.0 and 1.0."""
-    import cv2
     try:
         return float(cv2.compareHist(hist1.astype(np.float32), hist2.astype(np.float32), cv2.HISTCMP_CORREL))
     except Exception as exc:
@@ -89,19 +93,23 @@ def compare_clothing_histograms(hist1: np.ndarray, hist2: np.ndarray) -> float:
 
 # ── Embedding Extraction ─────────────────────────────────────────────────────
 
-def extract_embeddings_from_image(image_path: str) -> list[dict]:
+async def extract_embeddings_from_image(image_path: str) -> list[dict]:
     """Run DeepFace on a single image and return a list of face dicts.
 
     Each dict has keys: embedding (list[float]), facial_area (dict), face_confidence (float).
     Returns an empty list when no faces are detected.
     """
-    try:
-        results = DeepFace.represent(
+    def _represent():
+        return DeepFace.represent(
             img_path=image_path,
             model_name=settings.RECOGNITION_MODEL,
             detector_backend=settings.DETECTOR_BACKEND,
             enforce_detection=False,
         )
+
+    try:
+        loop = asyncio.get_running_loop()
+        results = await loop.run_in_executor(None, _represent)
     except Exception as exc:
         logger.error("DeepFace.represent failed for %s: %s", image_path, exc)
         return []
@@ -128,7 +136,7 @@ async def process_photo_embeddings(photo: Photo, db: AsyncSession) -> int:
 
     Returns the number of faces detected.
     """
-    faces = extract_embeddings_from_image(photo.file_path)
+    faces = await extract_embeddings_from_image(photo.file_path)
     face_count = 0
 
     for face_data in faces:
@@ -138,7 +146,7 @@ async def process_photo_embeddings(photo: Photo, db: AsyncSession) -> int:
         # Extract clothing histogram
         clothing_hist_bytes = None
         try:
-            hist = extract_clothing_histogram(photo.file_path, area)
+            hist = await extract_clothing_histogram(photo.file_path, area)
             if hist is not None:
                 clothing_hist_bytes = hist.tobytes()
         except Exception as e:
@@ -169,7 +177,7 @@ async def process_selfie_embedding(selfie: Selfie, db: AsyncSession) -> bool:
 
     Returns True on success, False if no face was detected.
     """
-    faces = extract_embeddings_from_image(selfie.file_path)
+    faces = await extract_embeddings_from_image(selfie.file_path)
     if not faces:
         logger.warning("No face detected in selfie %s", selfie.id)
         return False
@@ -300,14 +308,32 @@ async def match_faces_for_event(event_id: int, db: AsyncSession) -> dict:
         )
     )
     all_completed_photos = all_photos_result.scalars().all()
+    completed_photo_ids = [p.id for p in all_completed_photos]
+
+    # Pre-load all face embeddings for the completed photos to avoid N+1 queries
+    face_embs_by_photo = defaultdict(list)
+    if completed_photo_ids:
+        face_embs_result = await db.execute(
+            select(FaceEmbedding).where(FaceEmbedding.photo_id.in_(completed_photo_ids))
+        )
+        for fe in face_embs_result.scalars().all():
+            face_embs_by_photo[fe.photo_id].append(fe)
+
+    # Pre-load all existing matches for this event to avoid N+1 queries during uniqueness checks
+    existing_matches_result = await db.execute(
+        select(Match).where(Match.event_id == event_id)
+    )
+    existing_match_set = set()
+    existing_matches_count_by_photo = defaultdict(int)
+    for m in existing_matches_result.scalars().all():
+        key = (m.photo_id, m.user_id, m.face_embedding_id)
+        existing_match_set.add(key)
+        existing_matches_count_by_photo[m.photo_id] += 1
 
     # ── Step 4.0: Build clothing signatures for event members (First Pass) ────
     user_clothing_samples = defaultdict(list)
     for photo in all_completed_photos:
-        face_embs_result = await db.execute(
-            select(FaceEmbedding).where(FaceEmbedding.photo_id == photo.id)
-        )
-        face_embs = face_embs_result.scalars().all()
+        face_embs = face_embs_by_photo[photo.id]
         for face_emb in face_embs:
             if face_emb.clothing_hist is None:
                 continue
@@ -333,10 +359,7 @@ async def match_faces_for_event(event_id: int, db: AsyncSession) -> dict:
     insurance_threshold = settings.INSURANCE_THRESHOLD
 
     for photo in all_completed_photos:
-        face_embs_result = await db.execute(
-            select(FaceEmbedding).where(FaceEmbedding.photo_id == photo.id)
-        )
-        face_embs = face_embs_result.scalars().all()
+        face_embs = face_embs_by_photo[photo.id]
         if not face_embs:
             continue
 
@@ -395,16 +418,9 @@ async def match_faces_for_event(event_id: int, db: AsyncSession) -> dict:
 
             if strict_matches:
                 for user_id, sim in strict_matches:
-                    # Check for existing match to avoid duplicates
-                    existing = await db.execute(
-                        select(Match).where(
-                            Match.event_id == event_id,
-                            Match.photo_id == photo.id,
-                            Match.user_id == user_id,
-                            Match.face_embedding_id == face_emb.id,
-                        )
-                    )
-                    if existing.scalar_one_or_none() is None:
+                    # Check for existing match in local cache to avoid duplicates
+                    match_key = (photo.id, user_id, face_emb.id)
+                    if match_key not in existing_match_set:
                         match = Match(
                             event_id=event_id,
                             photo_id=photo.id,
@@ -413,20 +429,15 @@ async def match_faces_for_event(event_id: int, db: AsyncSession) -> dict:
                             similarity_score=round(sim, 4),
                         )
                         db.add(match)
+                        existing_match_set.add(match_key)
+                        existing_matches_count_by_photo[photo.id] += 1
                         matches_created += 1
                         photo_matches_created += 1
             else:
                 # Fallback: Best match above fallback threshold
                 if face_best_user_id is not None and face_best_sim >= fallback_threshold:
-                    existing = await db.execute(
-                        select(Match).where(
-                            Match.event_id == event_id,
-                            Match.photo_id == photo.id,
-                            Match.user_id == face_best_user_id,
-                            Match.face_embedding_id == face_emb.id,
-                        )
-                    )
-                    if existing.scalar_one_or_none() is None:
+                    match_key = (photo.id, face_best_user_id, face_emb.id)
+                    if match_key not in existing_match_set:
                         match = Match(
                             event_id=event_id,
                             photo_id=photo.id,
@@ -435,18 +446,15 @@ async def match_faces_for_event(event_id: int, db: AsyncSession) -> dict:
                             similarity_score=round(face_best_sim, 4),
                         )
                         db.add(match)
+                        existing_match_set.add(match_key)
+                        existing_matches_count_by_photo[photo.id] += 1
                         matches_created += 1
                         photo_matches_created += 1
 
-        # Check existing matches in DB for this photo
-        db_matches_result = await db.execute(
-            select(Match).where(Match.photo_id == photo.id)
-        )
-        db_matches = db_matches_result.scalars().all()
-        
         # Distribution Insurance: If photo has faces, but no matches in database and none created this run
-        if len(db_matches) == 0 and photo_matches_created == 0:
+        if settings.ENABLE_INSURANCE_MATCHING and existing_matches_count_by_photo[photo.id] == 0:
             if photo_best_user_id is not None and photo_best_sim >= insurance_threshold:
+                match_key = (photo.id, photo_best_user_id, photo_best_face_emb_id)
                 match = Match(
                     event_id=event_id,
                     photo_id=photo.id,
@@ -455,6 +463,8 @@ async def match_faces_for_event(event_id: int, db: AsyncSession) -> dict:
                     similarity_score=round(photo_best_sim, 4),
                 )
                 db.add(match)
+                existing_match_set.add(match_key)
+                existing_matches_count_by_photo[photo.id] += 1
                 matches_created += 1
                 logger.info(
                     "Insurance match created for photo %s (user %s, sim %s)",
