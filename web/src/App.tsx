@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { X, Download } from 'lucide-react';
+import axios from 'axios';
 import { AuthProvider, useAuthContext } from './context/AuthContext';
 import { useAppStore } from './store/useAppStore';
 import Navbar from './components/Navbar';
@@ -9,6 +11,7 @@ import Register from './views/Register';
 import Dashboard from './views/Dashboard';
 import EventDetail from './views/EventDetail';
 import PersonalGallery from './views/PersonalGallery';
+import AuthenticatedImage from './components/AuthenticatedImage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -35,6 +38,29 @@ function AppContent() {
   const { user, loading } = useAuthContext();
   const preview = useAppStore((s) => s.preview);
   const closePreview = useAppStore((s) => s.closePreview);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async (url: string) => {
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      const response = await axios.get(url, { responseType: 'blob' });
+      const blob = response.data;
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      const filename = url.split('/').pop() || 'focal_photo.jpg';
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error('Failed to download photo:', err);
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -86,7 +112,7 @@ function AppContent() {
       {preview.isOpen && (
         <div style={styles.lightboxOverlay} onClick={closePreview}>
           <div style={styles.lightboxContent} onClick={(e) => e.stopPropagation()}>
-            <img
+            <AuthenticatedImage
               src={preview.uri}
               alt="High Definition Match"
               style={styles.lightboxImage}
@@ -97,22 +123,22 @@ function AppContent() {
               {preview.confidence !== undefined && (
                 <div style={styles.lightboxConfidence}>
                   <span>AI Match Score: </span>
-                  <strong style={{ color: 'var(--accent-cyan)' }}>
+                  <strong style={{ color: 'var(--accent-amber)' }}>
                     {Math.round(preview.confidence * 100)}%
                   </strong>
                 </div>
               )}
 
               <div style={styles.lightboxActions}>
-                <a
-                  href={preview.uri}
-                  download="focal_match.jpg"
-                  className="btn btn-accent"
+                <button
+                  onClick={() => handleDownload(preview.uri)}
+                  className="btn btn-primary"
                   style={{ padding: '8px 16px', gap: '6px' }}
+                  disabled={downloading}
                 >
                   <Download size={14} />
-                  <span>Download</span>
-                </a>
+                  <span>{downloading ? 'Downloading...' : 'Download'}</span>
+                </button>
                 
                 <button
                   onClick={closePreview}
@@ -164,7 +190,7 @@ const styles = {
     width: '32px',
     height: '32px',
     border: '3px solid rgba(255,255,255,0.05)',
-    borderTopColor: 'var(--accent-purple)',
+    borderTopColor: 'var(--accent-amber)',
     borderRadius: '50%',
     animation: 'spin 1s linear infinite',
   },

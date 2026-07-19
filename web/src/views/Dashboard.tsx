@@ -79,19 +79,19 @@ export default function Dashboard() {
     switch (status) {
       case 'processing':
         return (
-          <span className="badge" style={{ backgroundColor: 'rgba(6,182,212,0.12)', border: '1px solid rgba(6,182,212,0.2)', color: 'var(--accent-cyan)' }}>
+          <span className="badge" style={{ backgroundColor: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.2)', color: 'var(--accent-amber)' }}>
             <Clock size={12} style={{ animation: 'spin 4s linear infinite' }} /> Processing
           </span>
         );
       case 'completed':
         return (
-          <span className="badge" style={{ backgroundColor: 'rgba(168,85,247,0.12)', border: '1px solid rgba(168,85,247,0.2)', color: 'var(--accent-purple)' }}>
-            <CheckCircle2 size={12} /> Completed
+          <span className="badge" style={{ backgroundColor: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.2)', color: 'var(--success)' }}>
+            <CheckCircle2 size={12} /> Sorted
           </span>
         );
       default:
         return (
-          <span className="badge" style={{ backgroundColor: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.2)', color: 'var(--success)' }}>
+          <span className="badge" style={{ backgroundColor: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.2)', color: '#3b82f6' }}>
             <Sparkles size={12} /> Active
           </span>
         );
@@ -299,7 +299,7 @@ export default function Dashboard() {
                 </button>
                 <button
                   type="submit"
-                  className="btn btn-accent"
+                  className="btn btn-primary"
                   disabled={joinLoading || joinCode.length !== 6}
                 >
                   {joinLoading ? 'Joining...' : 'Join Event'}
@@ -359,7 +359,7 @@ const styles = {
     width: '32px',
     height: '32px',
     border: '3px solid rgba(255,255,255,0.05)',
-    borderTopColor: 'var(--accent-purple)',
+    borderTopColor: 'var(--accent-amber)',
     borderRadius: '50%',
     animation: 'spin 1s linear infinite',
   },
@@ -375,7 +375,7 @@ const styles = {
     flexDirection: 'column' as const,
     justifyContent: 'space-between',
     minHeight: '180px',
-    border: '1px solid var(--glass-border)',
+    border: '1px solid var(--card-border)',
   },
   cardHeader: {
     display: 'flex',
@@ -424,9 +424,9 @@ const styles = {
     right: '24px',
     fontSize: '11px',
     fontWeight: 700,
-    color: 'var(--accent-purple)',
-    backgroundColor: 'rgba(124, 58, 237, 0.15)',
-    border: '1px solid rgba(124, 58, 237, 0.25)',
+    color: 'var(--accent-amber)',
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    border: '1px solid rgba(245, 158, 11, 0.25)',
     padding: '2px 8px',
     borderRadius: 'var(--border-radius-full)',
   },
@@ -552,7 +552,7 @@ const styles = {
   revealCode: {
     fontSize: '36px',
     fontWeight: 800,
-    color: 'var(--accent-purple)',
+    color: 'var(--accent-amber)',
     letterSpacing: '4px',
   },
   revealCopyButton: {

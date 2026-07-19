@@ -8,6 +8,7 @@ import { useAppStore } from '../store/useAppStore';
 import GlassCard from '../components/GlassCard';
 import PhotoGrid from '../components/PhotoGrid';
 import { API_ENDPOINTS } from '../constants/api';
+import AuthenticatedImage from '../components/AuthenticatedImage';
 
 export default function PersonalGallery() {
   const { data: events, isLoading: eventsLoading } = useEvents();
@@ -16,6 +17,28 @@ export default function PersonalGallery() {
   
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [downloadingZip, setDownloadingZip] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async (url: string, filename: string) => {
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      const response = await axios.get(url, { responseType: 'blob' });
+      const blob = response.data;
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error('Failed to download photo:', err);
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   // Lightbox overlay state
   const [selectedPhoto, setSelectedPhoto] = useState<GalleryPhoto | null>(null);
@@ -124,7 +147,7 @@ export default function PersonalGallery() {
         {photos && photos.length > 0 && (
           <button 
             onClick={handleDownloadAll} 
-            className="btn btn-accent" 
+            className="btn btn-primary" 
             style={{ gap: '8px' }}
             disabled={downloadingZip}
           >
@@ -214,7 +237,7 @@ export default function PersonalGallery() {
             <div style={styles.lightboxBody}>
               {/* Image side */}
               <div style={styles.lightboxImageContainer}>
-                <img
+                <AuthenticatedImage
                   id="gallery-lightbox-image"
                   src={selectedPhoto.uri}
                   alt="Matched detail"
@@ -237,14 +260,14 @@ export default function PersonalGallery() {
                   
                   const borderCol = face.matched_username 
                     ? isSoft 
-                      ? 'var(--accent-purple)' 
-                      : 'var(--accent-cyan)' 
+                      ? '#3b82f6' 
+                      : 'var(--accent-amber)' 
                     : 'var(--text-muted)';
                   
                   const bgCol = face.matched_username 
                     ? isSoft 
-                      ? 'rgba(168, 85, 247, 0.15)' 
-                      : 'rgba(6, 182, 212, 0.15)' 
+                      ? 'rgba(59, 130, 246, 0.15)' 
+                      : 'rgba(245, 158, 11, 0.15)' 
                     : 'rgba(255, 255, 255, 0.05)';
 
                   return (
@@ -292,7 +315,7 @@ export default function PersonalGallery() {
                           <span>{face.matched_username || 'Unknown Face'}</span>
                           {face.similarity_score !== null && (
                             <span style={{ 
-                              color: isSoft ? 'var(--accent-purple)' : 'var(--accent-cyan)', 
+                              color: isSoft ? '#60a5fa' : 'var(--accent-amber)', 
                               fontSize: '9px',
                               fontWeight: 700 
                             }}>
@@ -337,13 +360,13 @@ export default function PersonalGallery() {
                         const isSoft = face.similarity_score !== null && face.similarity_score < 0.60;
                         const borderCol = face.matched_username 
                           ? isSoft 
-                            ? 'var(--accent-purple)' 
-                            : 'var(--accent-cyan)' 
+                            ? '#3b82f6' 
+                            : 'var(--accent-amber)' 
                           : 'var(--text-muted)';
                         const bgCol = face.matched_username 
                           ? isSoft 
-                            ? 'rgba(168, 85, 247, 0.08)' 
-                            : 'rgba(6, 182, 212, 0.08)' 
+                            ? 'rgba(59, 130, 246, 0.08)' 
+                            : 'rgba(245, 158, 11, 0.08)' 
                           : 'rgba(255, 255, 255, 0.02)';
 
                         return (
@@ -383,15 +406,15 @@ export default function PersonalGallery() {
                 </div>
 
                 <div style={styles.lightboxActionsRow}>
-                  <a
-                    href={selectedPhoto.uri}
-                    download={`focal_match.jpg`}
-                    className="btn btn-accent"
-                    style={{ flex: 1, gap: '8px', justifyContent: 'center', display: 'flex', alignItems: 'center', textDecoration: 'none' }}
+                  <button
+                    onClick={() => handleDownload(selectedPhoto.uri, 'focal_match.jpg')}
+                    className="btn btn-primary"
+                    style={{ flex: 1, gap: '8px', justifyContent: 'center', display: 'flex', alignItems: 'center' }}
+                    disabled={downloading}
                   >
                     <Download size={16} />
-                    <span>Download</span>
-                  </a>
+                    <span>{downloading ? 'Downloading...' : 'Download'}</span>
+                  </button>
                   <button
                     onClick={handleClosePhotoDetail}
                     className="btn btn-outline"
@@ -468,11 +491,11 @@ const styles = {
     transition: 'all var(--transition-fast)',
   },
   selectorItemActive: {
-    backgroundColor: 'var(--accent-purple)',
+    backgroundColor: 'var(--accent-amber)',
     borderColor: 'transparent',
-    color: '#fff',
+    color: '#0b0f19',
     fontWeight: 600,
-    boxShadow: '0 4px 15px rgba(124, 58, 237, 0.3)',
+    boxShadow: '0 4px 15px rgba(245, 158, 11, 0.3)',
   },
   content: {
     width: '100%',
@@ -490,7 +513,7 @@ const styles = {
     width: '32px',
     height: '32px',
     border: '3px solid rgba(255,255,255,0.05)',
-    borderTopColor: 'var(--accent-purple)',
+    borderTopColor: 'var(--accent-amber)',
     borderRadius: '50%',
     animation: 'spin 1s linear infinite',
   },

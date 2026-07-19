@@ -137,10 +137,21 @@ export default function Dropzone({
         <div style={styles.previewsSection}>
           <div style={styles.previewsHeader}>
             <span style={styles.previewsTitle}>Selected Files ({selectedFiles.length})</span>
-            {mode === 'selfies' && selectedFiles.length < 2 && (
-              <span style={styles.warningBadge}>
-                <AlertCircle size={14} /> Upload at least 2 selfies
-              </span>
+            {mode === 'selfies' && (
+              selectedFiles.length < 3 ? (
+                <span style={styles.warningBadge}>
+                  <AlertCircle size={14} /> Add 3+ selfies for better matching ({selectedFiles.length}/3)
+                </span>
+              ) : (
+                <span style={{
+                  ...styles.warningBadge,
+                  backgroundColor: 'rgba(16,185,129,0.1)',
+                  borderColor: 'rgba(16,185,129,0.2)',
+                  color: 'var(--success)'
+                }}>
+                  <AlertCircle size={14} /> Ready to register! ({selectedFiles.length} selfies)
+                </span>
+              )
             )}
           </div>
           

@@ -1,5 +1,6 @@
 import { ImageIcon } from 'lucide-react';
 import GlassCard from './GlassCard';
+import AuthenticatedImage from './AuthenticatedImage';
 
 export interface PhotoItem {
   id: string;
@@ -55,11 +56,10 @@ export default function PhotoGrid({
             style={styles.gridItem}
             className="animate-fade-in"
           >
-            <img
+            <AuthenticatedImage
               src={photo.thumbnail_url || photo.uri}
               alt="Event Photo"
               style={styles.gridImage}
-              loading="lazy"
             />
             
             {/* Confidence Badge Overlay */}
@@ -96,7 +96,7 @@ const styles = {
   gridItem: {
     height: '200px',
     overflow: 'hidden',
-    border: '1px solid var(--glass-border)',
+    border: '1px solid var(--card-border)',
     borderRadius: 'var(--border-radius-md)',
   },
   gridImage: {

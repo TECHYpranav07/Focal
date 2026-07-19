@@ -7,11 +7,35 @@ import type { EventPhoto } from '../hooks/usePhotos';
 import { useAuthContext } from '../context/AuthContext';
 import GlassCard from '../components/GlassCard';
 import Dropzone from '../components/Dropzone';
+import AuthenticatedImage from '../components/AuthenticatedImage';
+import axios from 'axios';
 
 export default function EventDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuthContext();
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async (url: string, filename: string) => {
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      const response = await axios.get(url, { responseType: 'blob' });
+      const blob = response.data;
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error('Failed to download photo:', err);
+    } finally {
+      setDownloading(false);
+    }
+  };
   const [activeTab, setActiveTab] = useState<'photos' | 'upload-photos' | 'upload-selfies'>('photos');
   
   // File upload state caches
@@ -260,7 +284,7 @@ export default function EventDetail() {
                 </div>
               ) : currentStatus === 'completed' ? (
                 <div style={styles.indicatorState}>
-                  <div style={{ ...styles.indicatorIcon, color: 'var(--accent-purple)', backgroundColor: 'rgba(168,85,247,0.1)' }}>
+                  <div style={{ ...styles.indicatorIcon, color: 'var(--success)', backgroundColor: 'rgba(16,185,129,0.1)' }}>
                     <CheckCircle size={20} />
                   </div>
                   <div style={{ flex: 1 }}>
@@ -312,7 +336,7 @@ export default function EventDetail() {
             {currentStatus === 'completed' && (
               <button
                 onClick={handleViewGallery}
-                className="btn btn-accent"
+                className="btn btn-primary"
                 style={{ width: '100%', marginTop: '16px', gap: '8px' }}
               >
                 <ImageIcon size={16} />
@@ -420,7 +444,7 @@ export default function EventDetail() {
                           className="photo-card-hover animate-fade-in"
                         >
                           <div style={styles.photoImgWrapper}>
-                            <img src={photo.url} alt="Group photo" style={styles.photoImg} />
+                            <AuthenticatedImage src={photo.url} alt="Group photo" style={styles.photoImg} />
                             
                             {/* Processing Status Badge */}
                             {photo.processing_status !== 'completed' && (
@@ -537,7 +561,7 @@ export default function EventDetail() {
                 {selfiesFiles.length > 0 && !uploadLoading && (
                   <button
                     onClick={() => triggerUpload('selfies')}
-                    className="btn btn-accent"
+                    className="btn btn-primary"
                     style={{ width: '100%', marginTop: '24px', height: '46px' }}
                     disabled={selfiesFiles.length < 2}
                   >
@@ -557,7 +581,7 @@ export default function EventDetail() {
             <div style={styles.lightboxBody}>
               {/* Image side */}
               <div style={styles.lightboxImageContainer}>
-                <img
+                <AuthenticatedImage
                   id="lightbox-target-image"
                   src={selectedPhoto.url}
                   alt="Group detail"
@@ -578,17 +602,17 @@ export default function EventDetail() {
                   const isHovered = hoveredFaceId === face.id;
                   const isSoft = face.similarity_score !== null && face.similarity_score < 0.60;
                   
-                  const borderCol = face.matched_username 
-                    ? isSoft 
-                      ? 'var(--accent-purple)' 
-                      : 'var(--accent-cyan)' 
-                    : 'var(--text-muted)';
-                  
-                  const bgCol = face.matched_username 
-                    ? isSoft 
-                      ? 'rgba(168, 85, 247, 0.15)' 
-                      : 'rgba(6, 182, 212, 0.15)' 
-                    : 'rgba(255, 255, 255, 0.05)';
+                   const borderCol = face.matched_username 
+                     ? isSoft 
+                       ? '#3b82f6' 
+                       : 'var(--accent-amber)' 
+                     : 'var(--text-muted)';
+                   
+                   const bgCol = face.matched_username 
+                     ? isSoft 
+                       ? 'rgba(59, 130, 246, 0.15)' 
+                       : 'rgba(245, 158, 11, 0.15)' 
+                     : 'rgba(255, 255, 255, 0.05)';
 
                   return (
                     <div
@@ -635,7 +659,7 @@ export default function EventDetail() {
                           <span>{face.matched_username || 'Unknown Face'}</span>
                           {face.similarity_score !== null && (
                             <span style={{ 
-                              color: isSoft ? 'var(--accent-purple)' : 'var(--accent-cyan)', 
+                              color: isSoft ? '#60a5fa' : 'var(--accent-amber)', 
                               fontSize: '9px',
                               fontWeight: 700 
                             }}>
@@ -683,13 +707,13 @@ export default function EventDetail() {
                         const isSoft = face.similarity_score !== null && face.similarity_score < 0.60;
                         const borderCol = face.matched_username 
                           ? isSoft 
-                            ? 'var(--accent-purple)' 
-                            : 'var(--accent-cyan)' 
+                            ? '#3b82f6' 
+                            : 'var(--accent-amber)' 
                           : 'var(--text-muted)';
                         const bgCol = face.matched_username 
                           ? isSoft 
-                            ? 'rgba(168, 85, 247, 0.08)' 
-                            : 'rgba(6, 182, 212, 0.08)' 
+                            ? 'rgba(59, 130, 246, 0.08)' 
+                            : 'rgba(245, 158, 11, 0.08)' 
                           : 'rgba(255, 255, 255, 0.02)';
 
                         return (
@@ -729,15 +753,15 @@ export default function EventDetail() {
                 </div>
 
                 <div style={styles.lightboxActionsRow}>
-                  <a
-                    href={selectedPhoto.url}
-                    download={selectedPhoto.filename}
-                    className="btn btn-accent"
-                    style={{ flex: 1, gap: '8px', justifyContent: 'center', display: 'flex', alignItems: 'center', textDecoration: 'none' }}
+                  <button
+                    onClick={() => handleDownload(selectedPhoto.url, selectedPhoto.filename)}
+                    className="btn btn-primary"
+                    style={{ flex: 1, gap: '8px', justifyContent: 'center', display: 'flex', alignItems: 'center' }}
+                    disabled={downloading}
                   >
                     <Download size={16} />
-                    <span>Download</span>
-                  </a>
+                    <span>{downloading ? 'Downloading...' : 'Download'}</span>
+                  </button>
                   <button
                     onClick={handleClosePhotoDetail}
                     className="btn btn-outline"
@@ -839,7 +863,7 @@ const styles = {
   codeText: {
     fontSize: '16px',
     fontWeight: 800,
-    color: 'var(--accent-purple)',
+    color: 'var(--accent-amber)',
     letterSpacing: '1.5px',
   },
   copyIcon: {
@@ -946,9 +970,9 @@ const styles = {
     width: '32px',
     height: '32px',
     borderRadius: '50%',
-    backgroundColor: 'rgba(124, 58, 237, 0.15)',
-    border: '1px solid rgba(124, 58, 237, 0.25)',
-    color: 'var(--accent-purple)',
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    border: '1px solid rgba(245, 158, 11, 0.25)',
+    color: 'var(--accent-amber)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -963,9 +987,9 @@ const styles = {
   hostIndicator: {
     fontSize: '10px',
     fontWeight: 600,
-    color: 'var(--accent-purple)',
-    backgroundColor: 'rgba(124,58,237,0.1)',
-    border: '1px solid rgba(124,58,237,0.2)',
+    color: 'var(--accent-amber)',
+    backgroundColor: 'rgba(245,158,11,0.1)',
+    border: '1px solid rgba(245,158,11,0.2)',
     padding: '2px 6px',
     borderRadius: 'var(--border-radius-full)',
   },
@@ -1055,7 +1079,7 @@ const styles = {
     width: '32px',
     height: '32px',
     border: '3px solid rgba(255,255,255,0.05)',
-    borderTopColor: 'var(--accent-purple)',
+    borderTopColor: 'var(--accent-amber)',
     borderRadius: '50%',
     animation: 'spin 1s linear infinite',
   },
