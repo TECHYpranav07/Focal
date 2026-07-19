@@ -58,6 +58,17 @@ class Settings(BaseSettings):
                 raise ValueError("SECRET_KEY must be configured in environment or .env file when DEBUG is False.")
         return self
 
+    @model_validator(mode="after")
+    def adjust_database_url(self) -> "Settings":
+        if self.DATABASE_URL.startswith("postgres://") or self.DATABASE_URL.startswith("postgresql://"):
+            url = self.DATABASE_URL
+            if url.startswith("postgres://"):
+                url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+            elif url.startswith("postgresql://"):
+                url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+            self.DATABASE_URL = url
+        return self
+
     @property
     def photos_dir(self) -> Path:
         return Path(self.UPLOAD_DIR) / "photos"

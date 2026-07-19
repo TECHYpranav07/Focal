@@ -38,7 +38,11 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
         from sqlalchemy import text
         try:
-            await conn.execute(text("ALTER TABLE face_embeddings ADD COLUMN clothing_hist BLOB"))
+            dialect_name = conn.dialect.name
+            if dialect_name == "postgresql":
+                await conn.execute(text("ALTER TABLE face_embeddings ADD COLUMN clothing_hist BYTEA"))
+            else:
+                await conn.execute(text("ALTER TABLE face_embeddings ADD COLUMN clothing_hist BLOB"))
             logger.info("Successfully added clothing_hist column to face_embeddings")
         except Exception:
             pass
