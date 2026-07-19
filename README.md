@@ -4,16 +4,28 @@
 
 ---
 
-## 🚀 Quick Start Guide
+## 🏗️ Architecture
 
-This project contains three components:
-1. **`backend/`** — FastAPI Python backend containing the database models, authentication, uploads, and AI matching pipeline.
-2. **`web/`** — **(Recommended)** Modern React + Vite web client designed with premium Vanilla CSS dark glassmorphism.
-3. **`mobile/`** — Expo React Native mobile application built with shared design system tokens.
+Focal is designed as a decoupled modern web application:
+- **Frontend**: A React + Vite SPA built with custom premium dark vanilla CSS design tokens, hosted on **Vercel**.
+- **Backend**: A FastAPI server running inside a Docker container on **Hugging Face Spaces**, storing data in a local SQLite database and a persistent file volume.
+
+```mermaid
+graph TD
+    User([Guest / Host]) -->|HTTPS / Axios| FE[React Web Client Vercel]
+    FE -->|Authenticated API Requests| BE[FastAPI Backend HF Spaces]
+    subgraph Hugging Face Space Container
+        BE -->|Async DB Sessions| DB[(SQLite Database)]
+        BE -->|Save Photos / Selfies| FS[File System Storage]
+        BE -->|Thread-safe Executor| TF[DeepFace / ArcFace AI Engine]
+    end
+```
 
 ---
 
-### Step 1: Start the Backend
+## 🚀 Quick Start Guide
+
+### Step 1: Start the Backend locally
 
 1. Navigate to the backend directory:
    ```bash
@@ -27,19 +39,23 @@ This project contains three components:
    # On macOS/Linux:
    source venv/bin/activate
    ```
-3. Install the dependencies:
+3. Install dependencies:
    ```bash
    pip install -r requirements.txt
    ```
-4. Start the server:
+4. Copy the environment template and configure:
+   ```bash
+   copy .env.example .env
+   ```
+5. Start the development server:
    ```bash
    python run.py
    ```
-   The backend automatically sets up the SQLite database and upload storage. Visit the interactive API docs at `http://localhost:8000/docs`.
+   The backend runs on **`http://localhost:7860`**. Visit interactive API docs at `http://localhost:7860/docs`.
 
 ---
 
-### Step 2: Start the Web Client (Recommended)
+### Step 2: Start the Web Client
 
 1. Open a new terminal and navigate to the web directory:
    ```bash
@@ -47,53 +63,85 @@ This project contains three components:
    ```
 2. Install Node dependencies:
    ```bash
-   npm install --legacy-peer-deps
+   npm install
    ```
-3. Launch the development server:
+3. Copy the environment template:
+   ```bash
+   copy .env.example .env
+   ```
+4. Launch the development server:
    ```bash
    npm run dev
    ```
-   Open **`http://localhost:5173`** in your browser to explore the Focal app!
+   Open **`http://localhost:5173`** in your browser.
 
 ---
 
-### Step 3: Start the Mobile App (Alternative)
+### Alternative: Local Docker Compose
 
-1. Open a new terminal and navigate to the mobile directory:
-   ```bash
-   cd mobile
-   ```
-2. Install Node dependencies:
-   ```bash
-   npm install --legacy-peer-deps
-   ```
-3. Start the Expo server:
-   ```bash
-   npx expo start
-   ```
-4. Choose your preview mode:
-   - Scan the QR code using your phone's camera and open in the **Expo Go** app to run natively!
-   - Press `w` to view in your web browser.
+You can boot the entire stack (backend + frontend) in a single command using Docker Compose:
+```bash
+docker-compose up --build
+```
+- Web Client: `http://localhost:5173`
+- Backend API: `http://localhost:7860`
 
 ---
 
-## 🧠 Core AI Pipeline
+## ⚙️ Environment Variables
 
-The face recognition pipeline is located in `backend/app/services/face_service.py` and uses **ArcFace** embeddings and the **RetinaFace** detector backend.
+### Backend Configuration (`backend/.env`)
 
-1. **Selfie Registration:** Users upload 2–5 selfies. The pipeline extracts 512-dimensional face vectors for each and averages them into a single **centroid vector** for that user.
-2. **Scanning Photos:** When the host triggers processing, each event group photo is scanned for faces, generating a 512-dimensional vector for each face found.
-3. **Similarity Matching:** It computes **cosine similarity** (using NumPy) between each detected face vector and all member centroid vectors:
-   - Match threshold: **$\geq 0.60$** (configurable in `.env`).
-   - The best match above the threshold receives a linked photo match and is displayed with a confidence percentage (e.g., `92% confidence`).
-4. **Personal Gallery:** Members immediately receive a clean, tailored photo grid containing only the event pictures they appear in!
+| Variable | Description | Default |
+| :--- | :--- | :--- |
+| `SECRET_KEY` | JWT signing secret key. Must be a secure random string in production. | *None (Fails fast in production)* |
+| `DEBUG` | Enables development fallback secret keys and logs warning. | `false` |
+| `PORT` | Port the FastAPI application listens on. | `7860` |
+| `DATABASE_URL` | SQLite async connection URL. | `sqlite+aiosqlite:///./focal.db` |
+| `CORS_ORIGINS` | Comma-separated list of allowed origins. | `*` |
+| `RECOGNITION_MODEL` | Face recognition model for embeddings. | `ArcFace` |
+| `DETECTOR_BACKEND` | Face detector model backend. | `retinaface` |
+| `SIMILARITY_THRESHOLD` | Minimum cosine similarity score for face matches ($\ge 0.38$). | `0.38` |
+| `FALLBACK_THRESHOLD` | Relaxed matching threshold fallback ($\ge 0.32$). | `0.32` |
+| `INSURANCE_THRESHOLD` | Absolute minimum similarity score if no faces match ($\ge 0.28$). | `0.28` |
+| `ENABLE_INSURANCE_MATCHING`| Enables distribution insurance to prevent unassigned photos. | `true` |
+| `ALLOW_DESTRUCTIVE_MIGRATION`| Allows DB tables to reset on model change to prevent crashes. | `false` |
+
+### Web Client Configuration (`web/.env`)
+
+| Variable | Description | Example |
+| :--- | :--- | :--- |
+| `VITE_API_URL` | Base URL of the running FastAPI backend. | `https://techy-pranav-07-focal-backend.hf.space` |
 
 ---
 
-## 🎨 Premium Dark Glassmorphism UI
+## ☁️ Production Deployment
 
-Designed with a premium startup-grade dark aesthetic:
-- **Central Theme Tokens:** Consistent spacing, colors, and shadows under `mobile/constants/theme.ts`.
-- **Glass Card backdrops:** Clean glass borders and overlays.
-- **Micro-animations:** Spring click interactions, input focus transitions, and animated dots/progress bars for the AI processing status.
-- **Fast Grids:** shopify `@shopify/flash-list` and high-performance `expo-image` rendering.
+### 1. Backend — Hugging Face Spaces (Docker SDK)
+
+1. Create a new **Hugging Face Space** at [huggingface.co/spaces](https://huggingface.co/new-space).
+2. Choose **Docker** as the SDK and use the **Blank** template.
+3. In your Space's Settings, add your environment secrets:
+   - `SECRET_KEY`: A secure random password (e.g. `openssl rand -hex 32`).
+   - `ALLOW_DESTRUCTIVE_MIGRATION`: `true` (on initial run to establish tables).
+4. Clone the repository and push only the `backend` folder contents, OR push the repository contents directly to the Space's Git remote. Hugging Face will automatically build and start the Docker container on port `7860`.
+
+### 2. Frontend — Vercel
+
+1. Create a new project in **Vercel** pointing to your repository.
+2. Configure build settings:
+   - Framework Preset: **Vite**
+   - Root Directory: `web`
+3. Add Environment Variable:
+   - `VITE_API_URL`: Point to your Hugging Face Space App URL (e.g. `https://your-username-your-space.hf.space`).
+4. Click **Deploy**. Vercel will build the SPA and handle client routing redirects using `vercel.json` automatically.
+
+---
+
+## 🔒 Security & Reliability Enhancements
+
+Focal has been hardened for production readiness:
+- **Fail-Fast Safety**: Prevents backend boot if `SECRET_KEY` is missing in production.
+- **Auth-Gated Media**: Uploaded event photos and user selfies are completely protected behind JWT checks. Direct file access is rejected, preventing leaking of photos.
+- **Asynchronous AI Executions**: Wraps heavy DeepFace representations in a thread pool executor to prevent freezing the FastAPI event loop.
+- **Batch Queries**: Solves N+1 SQL bottlenecks up front. Completed photos, matches, and face database listings are queried in single batch queries.
