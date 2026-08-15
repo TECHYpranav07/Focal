@@ -37,8 +37,13 @@ export interface EventDetailResponse extends EventData {
 }
 
 export interface ProcessingStatusResponse {
-  status: 'pending' | 'processing' | 'completed' | 'failed';
-  progress: number;
+  event_id: number;
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'no_photos';
+  total_photos: number;
+  processed_photos: number;
+  total_faces_detected: number;
+  total_matches: number;
+  progress?: number;
   message?: string;
 }
 
@@ -80,8 +85,7 @@ export function useProcessingStatus(eventId: string, enabled = true) {
     enabled: !!eventId && enabled,
     refetchInterval: (query) => {
       const data = query.state.data as ProcessingStatusResponse | undefined;
-      if (data?.status === 'processing') return 3000;
-      if (data?.status === 'pending') return 5000;
+      if (data?.status === 'processing' || data?.status === 'pending') return 2000;
       return false;
     },
   });
@@ -129,8 +133,14 @@ export function useStartProcessing() {
       return response.data;
     },
     onSuccess: (_data, eventId) => {
+      queryClient.setQueryData(QUERY_KEYS.processingStatus(eventId), (old: any) => ({
+        ...old,
+        status: 'processing',
+        processed_photos: 0,
+      }));
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.eventDetail(eventId) });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.processingStatus(eventId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.eventPhotos(eventId) });
     },
   });
 }

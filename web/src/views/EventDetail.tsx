@@ -120,15 +120,21 @@ export default function EventDetail() {
     }
   };
 
+  const [triggerMessage, setTriggerMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
   const handleStartSort = async () => {
     if (!id) return;
+    setTriggerMessage(null);
     try {
       await startProcessing(id);
+      setTriggerMessage({ type: 'success', text: 'AI face matching triggered! Processing in background...' });
       refetchEvent();
       refetchStatus();
       refetchPhotos();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      const detail = err.response?.data?.detail || 'Failed to trigger face matching. Please check event permissions.';
+      setTriggerMessage({ type: 'error', text: detail });
     }
   };
 
@@ -199,7 +205,8 @@ export default function EventDetail() {
   }, [procStatus, event]);
 
   const currentProgress = useMemo(() => {
-    return procStatus?.progress || 0;
+    if (!procStatus || !procStatus.total_photos) return 0;
+    return Math.min(100, Math.round((procStatus.processed_photos / procStatus.total_photos) * 100));
   }, [procStatus]);
 
   const isHost = useMemo(() => {
@@ -330,6 +337,40 @@ export default function EventDetail() {
                   <Sparkles size={16} />
                   {processPending ? 'Sorting...' : 'Trigger Face Matching'}
                 </button>
+                {triggerMessage && (
+                  <div
+                    style={{
+                      marginTop: '12px',
+                      padding: '10px 14px',
+                      borderRadius: 'var(--border-radius-md)',
+                      fontSize: '13px',
+                      lineHeight: '1.4',
+                      backgroundColor:
+                        triggerMessage.type === 'success'
+                          ? 'rgba(16, 185, 129, 0.1)'
+                          : 'rgba(239, 68, 68, 0.1)',
+                      border: `1px solid ${
+                        triggerMessage.type === 'success'
+                          ? 'rgba(16, 185, 129, 0.25)'
+                          : 'rgba(239, 68, 68, 0.25)'
+                      }`,
+                      color:
+                        triggerMessage.type === 'success'
+                          ? 'var(--success)'
+                          : 'var(--error)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                    }}
+                  >
+                    {triggerMessage.type === 'success' ? (
+                      <CheckCircle size={16} />
+                    ) : (
+                      <AlertCircle size={16} />
+                    )}
+                    <span>{triggerMessage.text}</span>
+                  </div>
+                )}
               </div>
             )}
 

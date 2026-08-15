@@ -473,6 +473,7 @@ async def match_faces_for_event(event_id: int, db: AsyncSession) -> dict:
                     photo_best_sim,
                 )
 
+    event.status = "completed"
     await db.flush()
     await db.commit()
 
